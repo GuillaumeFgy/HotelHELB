@@ -1,0 +1,266 @@
+package com.example;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+public class HotelView implements HotelObserver {
+
+    private Stage stage;
+    private Scene scene;
+
+    private final int windowHeigth = 800;
+    private final int windowWidth = 800;
+
+    private final Map<String, Button> roomButtonsMap;
+    private ComboBox<String> floorSelector;
+    private VBox reservationList;
+    private ComboBox<String> strategySelector;
+    private ComboBox<String> sortSelector;
+
+
+    private final int roomsSize = 80;
+    private final int roomSpacing = 20;
+    private final String economicStyle = "-fx-background-color:rgb(255, 174, 68);";
+    private final String businessStyle = "-fx-background-color:rgb(139, 224, 253);";
+    private final String luxuryStyle = "-fx-background-color:rgb(201, 101, 255);";
+    private final String defaultStyle = "-fx-background-color: #d3d3d3;";
+    private final String reservedStyle = "-fx-background-color: #ff0000; ";
+
+    public HotelView(Stage stage){
+        this.stage = stage;
+        this.roomButtonsMap = new HashMap<String, Button>();
+    }
+
+   
+    public void initView(Hotel hotel, Map<String, AssignmentStrategy> strategies) {
+        prepareRoomButtonsMap(hotel); // ajout ici
+    
+        HBox mainBox = new HBox();
+        VBox leftPanel = new VBox(roomSpacing);
+        leftPanel.setPadding(new Insets(160, 20, 20, 20));
+        leftPanel.getChildren().add(displayColorCodes());
+        leftPanel.getChildren().add(createFloorSelector(hotel));
+    
+        VBox rightPanel = new VBox(roomSpacing);
+        rightPanel.setPadding(new Insets(160, 0, 0, 0));
+        strategySelector = new ComboBox<>();
+        getStrategySelector().getItems().addAll(strategies.keySet());
+        getStrategySelector().setValue("Random Assignment");
+
+        sortSelector = new ComboBox<>();
+        sortSelector.getItems().addAll("Sort by : Name");
+        sortSelector.getItems().addAll("Sort by : Room");
+        sortSelector.setValue("No sorting");
+    
+        reservationList = new VBox(roomSpacing);
+        ScrollPane scrollPane = new ScrollPane(reservationList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(500); // à ajuster selon l’espace disponible
+        scrollPane.setPrefWidth(300);
+
+        rightPanel.getChildren().addAll(strategySelector, sortSelector, scrollPane);
+
+    
+        mainBox.getChildren().addAll(leftPanel, rightPanel);
+        scene = new Scene(mainBox, windowWidth, windowHeigth);
+    
+        stage.setScene(scene);
+        stage.show();
+        updateFloorView(hotel, 0);
+    }
+    
+
+    public void prepareRoomButtonsMap(Hotel hotel) {
+        roomButtonsMap.clear();
+    
+        for (int floorIndex = 0; floorIndex < hotel.getNumberOfFloors(); floorIndex++) {
+            Floor floor = hotel.getFloor(floorIndex + 1);
+            for (Room room : floor.getRoomMap().values()) {
+                Button roomButton = createStyledRoomButton(room);
+                roomButtonsMap.put(room.getName(), roomButton);
+            }
+        }
+    }
+    
+
+    public void updateFloorView(Hotel hotel, int floorIndex) {
+        Floor floor = hotel.getFloor(floorIndex + 1);
+        ArrayList<ArrayList<String>> layout = hotel.getFloorLayout();
+    
+        HBox root = (HBox) scene.getRoot();
+        VBox leftPanel = (VBox) root.getChildren().get(0); // left = floor view
+    
+        leftPanel.getChildren().removeIf(node -> "roomRow".equals(node.getId()));
+    
+        for (int rowIndex = 0; rowIndex < layout.size(); rowIndex++) {
+            HBox rowBox = new HBox(roomSpacing);
+            rowBox.setId("roomRow");
+    
+            for (int colIndex = 0; colIndex < layout.get(rowIndex).size(); colIndex++) {
+                String cell = layout.get(rowIndex).get(colIndex);
+                if (!cell.equals("Z")) {
+                    Room room = floor.getRoomAt(rowIndex, colIndex);
+                    Button roomButton = roomButtonsMap.get(room.getName());
+                    rowBox.getChildren().add(roomButton);
+                } else {
+                    rowBox.getChildren().add(createSpacer());
+                }
+            }
+    
+            leftPanel.getChildren().add(rowBox);
+        }
+    }
+    
+    
+    
+
+    private HBox displayColorCodes() {
+        HBox legendBox = new HBox(roomSpacing);
+        legendBox.setPadding(new Insets(20));
+    
+        legendBox.getChildren().addAll(
+            createLabel("Luxury", luxuryStyle),
+            createLabel("Business", businessStyle),
+            createLabel("Economic", economicStyle)
+        );
+    
+        return legendBox;
+    }
+    
+
+    private HBox createLabel(String labelName, String style) {
+        Button label = new Button(labelName);
+        label.setDisable(true);
+        label.setStyle("-fx-font-weight: bold; -fx-opacity: 1.0;");
+        Region color = createColorSample(style);
+    
+        HBox container = new HBox();
+        container.getChildren().addAll(label, color);
+        return container;
+    }
+    
+    
+    private Region createColorSample(String style) {
+        Region sample = new Region();
+        sample.setPrefWidth(20);
+        sample.setPrefHeight(20);
+        sample.setStyle(style + " -fx-border-color: black;");
+        return sample;
+    }
+    
+
+    private Button createStyledRoomButton(Room room) {
+        Button button = new Button(room.getName());
+    
+        // Taille carrée, plus grande
+        button.setPrefWidth(roomsSize);
+        button.setPrefHeight(roomsSize);
+    
+        // Style par défaut (bordures arrondies, padding)
+        String style = "-fx-font-weight: bold; -fx-border-color: black; -fx-border-width: 1px; ";
+        style += getRoomColorStyle(room.getType());
+        button.setStyle(style);
+        return button;
+    }
+
+    private Region createSpacer() {
+        Region spacer = new Region();
+        spacer.setPrefWidth(roomsSize);
+        spacer.setPrefHeight(roomsSize);
+        spacer.setStyle("-fx-background-color: transparent;");
+        return spacer;
+    }
+    
+    public Button getButton(String roomName)
+    {
+        return roomButtonsMap.get(roomName);
+    }
+
+    public void reserveRoom(String roomName)
+    {
+        Button roomButton = roomButtonsMap.get(roomName);
+        roomButton.setStyle(reservedStyle);
+    }
+
+    public void freeRoom(String roomName, char type)
+    {
+        Button roomButton = roomButtonsMap.get(roomName);
+        roomButton.setStyle(getRoomColorStyle(type));
+    }
+
+    private ComboBox<String> createFloorSelector(Hotel hotel) {
+        floorSelector = new ComboBox<>();
+    
+        for (int i = 0; i < hotel.getNumberOfFloors(); i++) {
+            String floorLabel = "Floor : " + Hotel.getLetterFromNumber(i);
+            floorSelector.getItems().add(floorLabel);
+        }
+    
+        floorSelector.setValue(floorSelector.getItems().get(0)); // sélection par défaut
+        return floorSelector;
+    }
+
+    public Button createRefreshButton() {
+        return new Button("↻");
+    }
+
+    public HBox createReservationEntry(String clientLabel, String roomName, String colorStyle, Button refreshButton) {
+        Label nameLabel = new Label(clientLabel);
+        Label roomLabel = new Label(roomName);
+        roomLabel.setStyle(colorStyle + " -fx-padding: 5 10; -fx-font-weight: bold;");
+    
+        HBox box = new HBox(10);
+        box.setPadding(new Insets(10));
+        box.getChildren().addAll(nameLabel, roomLabel, refreshButton);
+        box.setUserData(roomName);
+        return box;
+    }
+    
+
+    public void showReservations(List<AssignmentRequest> assignments) {
+        reservationList.getChildren().clear();
+    
+        for (AssignmentRequest request : assignments) {
+            showReservation(request.reservation, request.room);
+        }
+    }
+
+    public void showReservation(Reservation res, Room assignedRoom)
+    {
+        String clientName = res.getFirstName().charAt(0) + ". " + res.getLastName();
+        String roomName = assignedRoom.getName();
+        String colorStyle = getRoomColorStyle(assignedRoom.getType());
+        Button refreshButton = createRefreshButton(); 
+        HBox reservationEntry = createReservationEntry(clientName, roomName, colorStyle, refreshButton);
+        reservationList.getChildren().add(reservationEntry);
+    }
+    
+    
+    private String getRoomColorStyle(char roomType) {
+        switch (roomType) {
+            case 'L': return luxuryStyle;
+            case 'B': return businessStyle;
+            case 'E': return economicStyle;
+            default: return defaultStyle;
+        }
+    }
+    
+    public ComboBox<String> getFloorSelector() { return floorSelector; }
+    public VBox getReservationList() { return reservationList; }
+    public ComboBox<String> getStrategySelector() { return strategySelector; }
+    public ComboBox<String> getSortSelector() { return sortSelector; }
+    
+}
