@@ -6,14 +6,17 @@ import java.util.List;
 import java.util.Map;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 public class HotelView implements HotelObserver {
@@ -29,6 +32,8 @@ public class HotelView implements HotelObserver {
     private VBox reservationList;
     private ComboBox<String> strategySelector;
     private ComboBox<String> sortSelector;
+    private Button verifyCodeButton = new Button("Verify Code");
+
 
 
     private final int roomsSize = 80;
@@ -38,6 +43,12 @@ public class HotelView implements HotelObserver {
     private final String luxuryStyle = "-fx-background-color:rgb(201, 101, 255);";
     private final String defaultStyle = "-fx-background-color: #d3d3d3;";
     private final String reservedStyle = "-fx-background-color: #ff0000; ";
+
+    private Stage verificationStage;
+    private TextField codeInputField;
+    private Label resultLabel;
+    private Button verifyButton;
+
 
     public HotelView(Stage stage){
         this.stage = stage;
@@ -71,7 +82,7 @@ public class HotelView implements HotelObserver {
         scrollPane.setPrefHeight(500); // à ajuster selon l’espace disponible
         scrollPane.setPrefWidth(300);
 
-        rightPanel.getChildren().addAll(strategySelector, sortSelector, scrollPane);
+        rightPanel.getChildren().addAll(verifyCodeButton, strategySelector, sortSelector, scrollPane);
 
     
         mainBox.getChildren().addAll(leftPanel, rightPanel);
@@ -238,7 +249,7 @@ public class HotelView implements HotelObserver {
         }
     }
 
-    public void showReservation(Reservation res, Room assignedRoom)
+    public HBox showReservation(Reservation res, Room assignedRoom)
     {
         String clientName = res.getFirstName().charAt(0) + ". " + res.getLastName();
         String roomName = assignedRoom.getName();
@@ -246,6 +257,7 @@ public class HotelView implements HotelObserver {
         Button refreshButton = createRefreshButton(); 
         HBox reservationEntry = createReservationEntry(clientName, roomName, colorStyle, refreshButton);
         reservationList.getChildren().add(reservationEntry);
+        return reservationEntry;
     }
     
     
@@ -257,10 +269,39 @@ public class HotelView implements HotelObserver {
             default: return defaultStyle;
         }
     }
+
+    public void createCodeVerificationPopup() {
+        verificationStage = new Stage();
+        verificationStage.initModality(Modality.APPLICATION_MODAL);
+        verificationStage.setTitle("Code Verification");
+
+        Label infoLabel = new Label("A valid code must be 10 characters long.");
+        codeInputField = new TextField();
+        codeInputField.setPromptText("Enter discount code");
+
+        resultLabel = new Label();
+        verifyButton = new Button("Verify");
+
+        VBox layout = new VBox(10, infoLabel, codeInputField, verifyButton, resultLabel);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER);
+
+        Scene scene = new Scene(layout, 300, 200);
+        verificationStage.setScene(scene);
+        verificationStage.show();
+    }
+
     
     public ComboBox<String> getFloorSelector() { return floorSelector; }
     public VBox getReservationList() { return reservationList; }
     public ComboBox<String> getStrategySelector() { return strategySelector; }
     public ComboBox<String> getSortSelector() { return sortSelector; }
+    public Button getVerifyCodeButton() { return verifyCodeButton; }
+    public Button getVerifyButton() { return verifyButton; }
+    public TextField getCodeInputField() { return codeInputField; }
+    public void showVerificationResult(String text) { resultLabel.setText(text); }
+    public void closeVerificationPopup() { verificationStage.close(); }
+
+    
     
 }

@@ -39,6 +39,7 @@ public class HotelController {
     private void displayUI()
     {
         view.showReservations(assignments);
+        addClickHandlersToReservations();
     }
 
     private void setActions()
@@ -46,6 +47,28 @@ public class HotelController {
         floorSelectionAction();
         refreshButtonAction();
         sortSelectorAction();
+        addClickHandlersToRoomButtons();
+
+        view.getVerifyCodeButton().setOnAction(e -> {
+            view.createCodeVerificationPopup();
+        
+            view.getVerifyButton().setOnAction(ev -> {
+                String code = view.getCodeInputField().getText().trim();
+                if (code.length() != 10) {
+                    view.showVerificationResult("❌ Invalid code length.");
+                    return;
+                }
+        
+                try {
+                    int discount = DiscountCodeGenerator.decodeDiscount(code);
+                    view.showVerificationResult("✅ Valid code! Discount: " + discount + "%");
+                } catch (IllegalArgumentException ex) {
+                    view.showVerificationResult("❌ Invalid code.");
+                }
+            });
+        });
+        
+
     }
 
     private void floorSelectionAction()
@@ -83,6 +106,29 @@ public class HotelController {
             }
         }
     }
+
+    private void addClickHandlersToReservations() {
+        VBox reservationList = view.getReservationList();
+    
+        for (javafx.scene.Node node : reservationList.getChildren()) {
+            if (node instanceof HBox) {
+                HBox hbox = (HBox) node;
+    
+                Object userData = hbox.getUserData();
+                if (userData instanceof String) {
+                    String roomName = (String) userData;
+                    for (AssignmentRequest request : assignments) {
+                        if (request.room.getName().equals(roomName)) {
+                            hbox.setOnMouseClicked(e -> ReservationView.show(request, hotel, view, this, false));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
 
     private void sortSelectorAction() {
         view.getSortSelector().setOnAction(event -> {
@@ -122,6 +168,7 @@ public class HotelController {
     
             view.showReservations(assignments);
             refreshButtonAction(); // toujours réappliquer les handlers
+            addClickHandlersToReservations();
         });
     }
 
@@ -210,7 +257,34 @@ public class HotelController {
         }
     }
 
+    public void removeReservation(AssignmentRequest request) {
+        // Supprimer de la liste observable
+        assignments.removeIf(r -> r.equals(request));
     
-    
+        // Supprimer de la vue graphique
+        VBox reservationList = view.getReservationList();
+        reservationList.getChildren().removeIf(node -> {
+            if (node instanceof HBox) {
+                Object userData = node.getUserData();
+                return userData instanceof String && userData.equals(request.room.getName());
+            }
+            return false;
+        });
+    }
+
+    private void addClickHandlersToRoomButtons() {
+        for (Floor floor : hotel.getFloorMap().values()) {
+            for (Room room : floor.getRoomMap().values()) {
+                Button roomButton = view.getButton(room.getName());
+                roomButton.setOnAction(e -> {
+                    if (room.isReserved()) {
+                        Reservation res = room.getReservation();
+                        AssignmentRequest request = new AssignmentRequest(res, room);
+                        ReservationView.show(request, hotel, view, this, true);
+                    }
+                });
+            }
+        }
+    }
     
 }

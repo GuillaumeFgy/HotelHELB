@@ -78,5 +78,6 @@ public class Hotel {
     public ArrayList<ArrayList<String>> getFloorLayout(){ return floorLayout; }
     public Floor getFloor(int level){ return floorMap.get(level);}
     public static String getLetterFromNumber(int number){return String.valueOf((char) ('A' + number));}
+    public Map<Integer, Floor> getFloorMap() { return floorMap; }
     
 }

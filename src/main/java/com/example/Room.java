@@ -39,6 +39,7 @@ public class Room {
     public int getRow() { return row; }
     public int getCol() { return col; }
     public char getType() { return type; }
+    public Reservation getReservation(){ return reservation; }
 
 }
 
