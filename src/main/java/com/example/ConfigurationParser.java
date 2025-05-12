@@ -21,53 +21,45 @@ public class ConfigurationParser {
         return floorLayout;
     }
 
+    /* parse
+    Inputs: filename – path to the configuration file (.hconfig format).
+    Outputs: none (fills numberOfFloors and floorLayout fields).
+    Description: Reads the hotel layout config file, extracts number of floors and room types for each row. */
     private void parse(String filename) {
         try (Scanner scanner = new Scanner(new File(filename))) {
-            if (!scanner.hasNextLine()) {
-                throw new IllegalArgumentException("Missing number of floors.");
-            }
+            if (!scanner.hasNextLine()) { throw new IllegalArgumentException("Missing number of floors."); } // File must have at least one line
 
-            // First line = number of floors
-            String firstLine = scanner.nextLine().trim();
+            String firstLine = scanner.nextLine().trim(); // Read first line
             try {
-                numberOfFloors = Integer.parseInt(firstLine);
+                numberOfFloors = Integer.parseInt(firstLine); // Parse number of floors
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid number of floors.");
+                throw new IllegalArgumentException("Invalid number of floors."); // Must be a number
             }
 
             while (scanner.hasNextLine()) {
-                String line = scanner.nextLine().trim();
-                if (line.isEmpty()) continue;
+                String line = scanner.nextLine().trim(); // Read next line
+                if (line.isEmpty()) continue; // Skip empty lines
 
-                String[] tokens = line.split(",");
+                String[] tokens = line.split(","); // Split line into room codes
                 ArrayList<String> row = new ArrayList<>();
 
                 for (String token : tokens) {
                     token = token.trim();
-                    if (!token.matches("[EBLZ]")) {
+                    if (!token.matches("[EBLZ]")) { // Validate room code
                         throw new IllegalArgumentException("Invalid room code: " + token);
                     }
-                    row.add(token);
+                    row.add(token); // Add valid code to row
                 }
 
-                floorLayout.add(row);
+                floorLayout.add(row); // Add parsed row to layout
             }
 
-            if (floorLayout.isEmpty()) {
-                throw new IllegalArgumentException("Missing floor layout.");
-            }
-
-            // Optional: check that all rows have same length
-            int expectedCols = floorLayout.get(0).size();
-            for (ArrayList<String> row : floorLayout) {
-                if (row.size() != expectedCols) {
-                    throw new IllegalArgumentException("Inconsistent row length in floor layout.");
-                }
-            }
+            if (floorLayout.isEmpty()) { throw new IllegalArgumentException("Missing floor layout."); } // At least one row required
 
         } catch (IOException e) {
-            System.err.println("Error reading .hconfig: " + e.getMessage());
+            System.err.println("Error reading .hconfig: " + e.getMessage()); // Log error if file cannot be read
         }
     }
+
 }
 

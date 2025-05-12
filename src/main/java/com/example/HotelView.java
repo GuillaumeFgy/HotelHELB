@@ -60,211 +60,267 @@ public class HotelView implements HotelObserver {
     }
 
    
+    /* initView
+    Inputs: hotel – the Hotel model; strategies – map of available assignment strategies.
+    Outputs: none.
+    Description: Initializes the full GUI layout with floor view, strategy selector, reservation list, and scrollable panel. */
     public void initView(Hotel hotel, Map<String, AssignmentStrategy> strategies) {
-        prepareRoomButtonsMap(hotel); // ajout ici
-    
-        double topPadding = WINDOW_HEIGHT * 0.2;
+        prepareRoomButtonsMap(hotel); // Preload all room buttons
 
-        HBox mainBox = new HBox();
-        VBox leftPanel = new VBox(roomSpacing);
+        double topPadding = WINDOW_HEIGHT * 0.2; // Space at top for layout
+
+        HBox mainBox = new HBox(); // Root layout
+        VBox leftPanel = new VBox(roomSpacing); // Left: floors
         leftPanel.setPadding(new Insets(topPadding, 0.025 * WINDOW_WIDTH, 0.025 * WINDOW_HEIGHT, 0.025 * WINDOW_WIDTH));
-        leftPanel.getChildren().add(displayColorCodes());
-        leftPanel.getChildren().add(createFloorSelector(hotel));
-    
-        VBox rightPanel = new VBox(roomSpacing);
+        leftPanel.getChildren().add(displayColorCodes()); // Legend
+        leftPanel.getChildren().add(createFloorSelector(hotel)); // Floor selector
+
+        VBox rightPanel = new VBox(roomSpacing); // Right: reservations & controls
         rightPanel.setPadding(new Insets(topPadding, 0, 0, 0));
         strategySelector = new ComboBox<>();
-        getStrategySelector().getItems().addAll(strategies.keySet());
-        getStrategySelector().setValue("Random Assignment");
+        getStrategySelector().getItems().addAll(strategies.keySet()); // Populate strategy dropdown
+        getStrategySelector().setValue("Random Assignment"); // Default value
 
         sortSelector = new ComboBox<>();
-        sortSelector.getItems().addAll("Sort by : Name");
-        sortSelector.getItems().addAll("Sort by : Room");
-        sortSelector.setValue("No sorting");
-    
-        reservationList = new VBox(roomSpacing);
-        ScrollPane scrollPane = new ScrollPane(reservationList);
+        sortSelector.getItems().addAll("Sort by : Name", "Sort by : Room");
+        sortSelector.setValue("No sorting"); // Default value
+
+        reservationList = new VBox(roomSpacing); // Reservation display area
+        ScrollPane scrollPane = new ScrollPane(reservationList); // Scrollable panel
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(WINDOW_HEIGHT * 0.6);
         scrollPane.setPrefWidth(WINDOW_WIDTH * 0.375);
 
-
         rightPanel.getChildren().addAll(verifyCodeButton, strategySelector, sortSelector, scrollPane);
+        mainBox.getChildren().addAll(leftPanel, rightPanel); // Combine panels
 
-    
-        mainBox.getChildren().addAll(leftPanel, rightPanel);
-        scene = new Scene(mainBox, WINDOW_WIDTH, WINDOW_HEIGHT);
-    
+        scene = new Scene(mainBox, WINDOW_WIDTH, WINDOW_HEIGHT); // Final scene setup
         stage.setScene(scene);
         stage.show();
-        updateFloorView(hotel, 0);
+        updateFloorView(hotel, 0); // Display first floor
     }
 
+    /* prepareRoomButtonsMap
+    Inputs: hotel – the Hotel model.
+    Outputs: none.
+    Description: Creates and stores styled buttons for each room in a map, keyed by room name. */
     public void prepareRoomButtonsMap(Hotel hotel) {
-        roomButtonsMap.clear();
-    
+        roomButtonsMap.clear(); // Reset map
+
         for (int floorIndex = 0; floorIndex < hotel.getNumberOfFloors(); floorIndex++) {
             Floor floor = hotel.getFloor(floorIndex + 1);
             for (Room room : floor.getRoomMap().values()) {
-                Button roomButton = createStyledRoomButton(room);
-                roomButtonsMap.put(room.getName(), roomButton);
+                Button roomButton = createStyledRoomButton(room); // Create button for room
+                roomButtonsMap.put(room.getName(), roomButton); // Store it in the map
             }
         }
     }
-    
 
+    /* updateFloorView
+    Inputs: hotel – the Hotel model; floorIndex – index of floor to display.
+    Outputs: none.
+    Description: Updates the visual grid of rooms shown for the selected floor. */
     public void updateFloorView(Hotel hotel, int floorIndex) {
-        Floor floor = hotel.getFloor(floorIndex + 1);
-        ArrayList<ArrayList<String>> layout = hotel.getFloorLayout();
-    
+        Floor floor = hotel.getFloor(floorIndex + 1); // Get current floor
+        ArrayList<ArrayList<String>> layout = hotel.getFloorLayout(); // Room layout
+
         HBox root = (HBox) scene.getRoot();
-        VBox leftPanel = (VBox) root.getChildren().get(0); // left = floor view
-    
-        leftPanel.getChildren().removeIf(node -> "roomRow".equals(node.getId()));
-    
+        VBox leftPanel = (VBox) root.getChildren().get(0); // Floor view on left
+
+        leftPanel.getChildren().removeIf(node -> "roomRow".equals(node.getId())); // Remove old rows
+
         for (int rowIndex = 0; rowIndex < layout.size(); rowIndex++) {
             HBox rowBox = new HBox(roomSpacing);
-            rowBox.setId("roomRow");
-    
+            rowBox.setId("roomRow"); // Tag for future removal
+
             for (int colIndex = 0; colIndex < layout.get(rowIndex).size(); colIndex++) {
                 String cell = layout.get(rowIndex).get(colIndex);
                 if (!cell.equals("Z")) {
                     Room room = floor.getRoomAt(rowIndex, colIndex);
-                    Button roomButton = roomButtonsMap.get(room.getName());
-                    rowBox.getChildren().add(roomButton);
+                    Button roomButton = roomButtonsMap.get(room.getName()); // Get matching button
+                    rowBox.getChildren().add(roomButton); // Add room button
                 } else {
-                    rowBox.getChildren().add(createSpacer());
+                    rowBox.getChildren().add(createSpacer()); // Add empty space
                 }
             }
-    
-            leftPanel.getChildren().add(rowBox);
+
+            leftPanel.getChildren().add(rowBox); // Add row to floor view
         }
     }
 
+
+    /* setSquareSize
+    Inputs: node – UI component; size – target size for width and height.
+    Outputs: none.
+    Description: Sets both the width and height of a Region to create a square. */
     private void setSquareSize(Region node, double size) {
-        node.setPrefWidth(size);
-        node.setPrefHeight(size);
+        node.setPrefWidth(size); // Set width
+        node.setPrefHeight(size); // Set height
     }
 
+    /* displayColorCodes
+    Inputs: none.
+    Outputs: an HBox containing visual legends for room types.
+    Description: Creates and returns a horizontal box showing the color codes for each room type. */
     private HBox displayColorCodes() {
-        HBox legendBox = new HBox(roomSpacing);
-        legendBox.setPadding(new Insets(WINDOW_HEIGHT * 0.025));
-    
+        HBox legendBox = new HBox(roomSpacing); // Horizontal container for color legend
+        legendBox.setPadding(new Insets(WINDOW_HEIGHT * 0.025)); // Add spacing
+
         legendBox.getChildren().addAll(
-            createLabel("Luxury", luxuryStyle),
-            createLabel("Business", businessStyle),
-            createLabel("Economic", economicStyle)
+            createLabel("Luxury", luxuryStyle),   // Add luxury legend
+            createLabel("Business", businessStyle), // Add business legend
+            createLabel("Economic", economicStyle)  // Add economic legend
         );
-    
+
         return legendBox;
     }
-    
 
+    /* createLabel
+    Inputs: labelName – name text to show; style – background style for color block.
+    Outputs: HBox containing the label and corresponding color sample.
+    Description: Builds a labeled color indicator for a room type legend. */
     private HBox createLabel(String labelName, String style) {
-        Button label = new Button(labelName);
-        label.setDisable(true);
-        label.setStyle("-fx-font-weight: bold; -fx-opacity: 1.0;");
-        Region color = createColorSample(style);
-    
-        HBox container = new HBox();
-        container.getChildren().addAll(label, color);
+        Button label = new Button(labelName); // Label as button
+        label.setDisable(true); // Disable interaction
+        label.setStyle("-fx-font-weight: bold; -fx-opacity: 1.0;"); // Make label stand out
+        Region color = createColorSample(style); // Color block
+
+        HBox container = new HBox(); // Horizontal container
+        container.getChildren().addAll(label, color); // Add both to layout
         return container;
     }
-    
-    
+
+    /* createColorSample
+    Inputs: style – CSS background style.
+    Outputs: a styled square Region.
+    Description: Creates a small square block with a given style for color legends. */
     private Region createColorSample(String style) {
-        Region sample = new Region();
-        setSquareSize(sample, roomsSize * 0.25);
-        sample.setStyle(style + " -fx-border-color: black;");
+        Region sample = new Region(); // Simple empty region
+        setSquareSize(sample, roomsSize * 0.25); // Set size
+        sample.setStyle(style + " -fx-border-color: black;"); // Add border and background
         return sample;
     }
-    
 
+    /* createStyledRoomButton
+    Inputs: room – the Room model to create a button for.
+    Outputs: a Button with proper name, size and style.
+    Description: Creates a visual button for a room with its name and color style. */
     private Button createStyledRoomButton(Room room) {
-        Button button = new Button(room.getName());
-        setSquareSize(button, roomsSize);
-        button.setStyle(buildRoomButtonStyle(room.getType()));
+        Button button = new Button(room.getName()); // Label with room name
+        setSquareSize(button, roomsSize); // Make it square
+        button.setStyle(buildRoomButtonStyle(room.getType())); // Style based on type
         return button;
     }
 
+    /* createSpacer
+    Inputs: none.
+    Outputs: an invisible square region.
+    Description: Creates a transparent placeholder in the grid for non-room cells. */
     private Region createSpacer() {
-        Region spacer = new Region();
-        setSquareSize(spacer, roomsSize);
-        spacer.setStyle("-fx-background-color: transparent;");
+        Region spacer = new Region(); // Empty region
+        setSquareSize(spacer, roomsSize); // Make it square
+        spacer.setStyle("-fx-background-color: transparent;"); // Transparent background
         return spacer;
     }
 
+    /* buildRoomButtonStyle
+    Inputs: roomType – the character representing room type ('L', 'B', 'E').
+    Outputs: a full CSS style string.
+    Description: Builds the CSS string for a room button based on its type. */
     private String buildRoomButtonStyle(char roomType) {
-        return "-fx-font-weight: bold; -fx-border-color: black; -fx-border-width: 1px; " + getRoomColorStyle(roomType);
+        return "-fx-font-weight: bold; -fx-border-color: black; -fx-border-width: 1px; " + getRoomColorStyle(roomType); // Full style
     }
 
-    
-    public Button getButton(String roomName)
-    {
+    public Button getButton(String roomName) {
         return roomButtonsMap.get(roomName);
     }
 
-    public void reserveRoom(String roomName)
-    {
-        Button roomButton = roomButtonsMap.get(roomName);
-        roomButton.setStyle(reservedStyle);
+
+    /* reserveRoom
+    Inputs: roomName – name of the room to mark as reserved.
+    Outputs: none.
+    Description: Updates the UI button style for the specified room to indicate it's reserved. */
+    public void reserveRoom(String roomName) {
+        Button roomButton = roomButtonsMap.get(roomName); // Get button
+        roomButton.setStyle(reservedStyle); // Apply reserved style
     }
 
-    public void freeRoom(String roomName, char type)
-    {
-        Button roomButton = roomButtonsMap.get(roomName);
-        roomButton.setStyle(buildRoomButtonStyle(type));
+    /* freeRoom
+    Inputs: roomName – name of the room to release; type – room type ('L', 'B', 'E').
+    Outputs: none.
+    Description: Restores the button style of the room after it has been freed. */
+    public void freeRoom(String roomName, char type) {
+        Button roomButton = roomButtonsMap.get(roomName); // Get button
+        roomButton.setStyle(buildRoomButtonStyle(type)); // Re-apply type-specific style
     }
 
+    /* createFloorSelector
+    Inputs: hotel – hotel model to read floor count from.
+    Outputs: ComboBox with floor labels.
+    Description: Builds a dropdown for switching between hotel floors. */
     private ComboBox<String> createFloorSelector(Hotel hotel) {
         floorSelector = new ComboBox<>();
-    
         for (int i = 0; i < hotel.getNumberOfFloors(); i++) {
-            String floorLabel = "Floor : " + Hotel.getLetterFromNumber(i);
-            floorSelector.getItems().add(floorLabel);
+            String floorLabel = "Floor : " + Hotel.getLetterFromNumber(i); // Format label
+            floorSelector.getItems().add(floorLabel); // Add to dropdown
         }
-    
-        floorSelector.setValue(floorSelector.getItems().get(0)); // sélection par défaut
+        floorSelector.setValue(floorSelector.getItems().get(0)); // Set default selection
         return floorSelector;
     }
 
+    /* createRefreshButton
+    Inputs: none.
+    Outputs: a Button with a refresh icon.
+    Description: Creates a button used to reassign a reservation to a new room. */
     public Button createRefreshButton() {
-        return new Button("↻");
+        return new Button("↻"); // Unicode refresh symbol
     }
 
+    /* createReservationEntry
+    Inputs: clientLabel – short client name; roomName – assigned room; colorStyle – room type style; refreshButton – button to reassign.
+    Outputs: an HBox representing a reservation entry.
+    Description: Builds the visual component for a single reservation line. */
     public HBox createReservationEntry(String clientLabel, String roomName, String colorStyle, Button refreshButton) {
-        Label nameLabel = new Label(clientLabel);
-        Label roomLabel = new Label(roomName);
-        roomLabel.setStyle(colorStyle + " -fx-padding: 5 10; -fx-font-weight: bold;");
-    
-        HBox box = new HBox(roomSpacing * 0.5);
+        Label nameLabel = new Label(clientLabel); // Client name
+        Label roomLabel = new Label(roomName); // Room name
+        roomLabel.setStyle(colorStyle + " -fx-padding: 5 10; -fx-font-weight: bold;"); // Room type color
+
+        HBox box = new HBox(roomSpacing * 0.5); // Horizontal container
         box.setPadding(new Insets(roomSpacing * 0.5));
-        box.getChildren().addAll(nameLabel, roomLabel, refreshButton);
-        box.setUserData(roomName);
+        box.getChildren().addAll(nameLabel, roomLabel, refreshButton); // Add components
+        box.setUserData(roomName); // Store room reference for logic
         return box;
     }
-    
 
+    /* showReservations
+    Inputs: assignments – list of current reservation-room assignments.
+    Outputs: none.
+    Description: Clears and repopulates the right panel with all reservations. */
     public void showReservations(List<AssignmentRequest> assignments) {
-        reservationList.getChildren().clear();
-    
+        reservationList.getChildren().clear(); // Remove old entries
         for (AssignmentRequest request : assignments) {
-            showReservation(request.reservation, request.room);
+            showReservation(request.reservation, request.room); // Add each entry
         }
     }
 
-    public HBox showReservation(Reservation res, Room assignedRoom)
-    {
-        String clientName = res.getFirstName().charAt(0) + ". " + res.getLastName();
-        String roomName = assignedRoom.getName();
-        String colorStyle = getRoomColorStyle(assignedRoom.getType());
-        Button refreshButton = createRefreshButton(); 
+    /* showReservation
+    Inputs: res – Reservation object; assignedRoom – room currently assigned.
+    Outputs: the HBox created and displayed for the reservation.
+    Description: Creates and displays a reservation entry in the list. */
+    public HBox showReservation(Reservation res, Room assignedRoom) {
+        String clientName = res.getFirstName().charAt(0) + ". " + res.getLastName(); // Short name
+        String roomName = assignedRoom.getName(); // Room label
+        String colorStyle = getRoomColorStyle(assignedRoom.getType()); // Get type color
+        Button refreshButton = createRefreshButton(); // Add refresh option
         HBox reservationEntry = createReservationEntry(clientName, roomName, colorStyle, refreshButton);
-        reservationList.getChildren().add(reservationEntry);
+        reservationList.getChildren().add(reservationEntry); // Add to UI
         return reservationEntry;
     }
-    
-    
+
+    /* getRoomColorStyle
+    Inputs: roomType – character representing room type.
+    Outputs: CSS style string.
+    Description: Returns the color style associated with the room type. */
     private String getRoomColorStyle(char roomType) {
         switch (roomType) {
             case 'L': return luxuryStyle;
@@ -274,14 +330,18 @@ public class HotelView implements HotelObserver {
         }
     }
 
+    /* createCodeVerificationPopup
+    Inputs: none.
+    Outputs: none.
+    Description: Opens a popup for users to enter and validate a discount code. */
     public void createCodeVerificationPopup() {
         verificationStage = new Stage();
         verificationStage.initModality(Modality.APPLICATION_MODAL);
         verificationStage.setTitle("Code Verification");
 
-        Label infoLabel = new Label("A valid code must be 10 characters long.");
+        Label infoLabel = new Label("A valid code must be 10 characters long."); // Instruction
         codeInputField = new TextField();
-        codeInputField.setPromptText("Enter discount code");
+        codeInputField.setPromptText("Enter discount code"); // Placeholder
 
         resultLabel = new Label();
         verifyButton = new Button("Verify");
@@ -290,10 +350,11 @@ public class HotelView implements HotelObserver {
         layout.setPadding(new Insets(20));
         layout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(layout, POPUP_WIDTH, POPUP_HEIGHT);
+        Scene scene = new Scene(layout, POPUP_WIDTH, POPUP_HEIGHT); // Create scene
         verificationStage.setScene(scene);
-        verificationStage.show();
+        verificationStage.show(); // Show popup
     }
+
 
     public ComboBox<String> getFloorSelector() { return floorSelector; }
     public VBox getReservationList() { return reservationList; }

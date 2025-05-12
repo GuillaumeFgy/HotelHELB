@@ -18,35 +18,43 @@ public class Floor {
         initializeRooms();
     }
 
+    /* initializeRooms
+    Inputs: none (uses floorLayout and level fields).
+    Outputs: none (populates the roomMap with Room instances).
+    Description: Iterates over the floor layout and creates Room objects for each valid cell (not 'Z'), assigning them unique names. */
     private void initializeRooms() {
-        int roomCounter = 1;
+        int roomCounter = 1; // Used to number rooms on this floor
         for (int rowIndex = 0; rowIndex < floorLayout.size(); rowIndex++) {
             ArrayList<String> row = floorLayout.get(rowIndex);
             for (int colIndex = 0; colIndex < row.size(); colIndex++) {
-                String code = row.get(colIndex);
-                if (!code.equals("Z")) {
-                    String roomName = Hotel.getLetterFromNumber(level - 1) + roomCounter + code;
+                String code = row.get(colIndex); // Get room type code
+                if (!code.equals("Z")) { // Skip if marked as void space
+                    String roomName = Hotel.getLetterFromNumber(level - 1) + roomCounter + code; // Generate unique room name
                     Room room = new Room(roomName, rowIndex, colIndex, code.charAt(0));
-                    roomMap.put(roomName, room);
+                    roomMap.put(roomName, room); 
                     roomCounter++;
                 }
             }
         }
     }
+
     
     
     public Map<String, Room> getRoomMap() {
         return roomMap;
     }
 
+    /* getRoomAt
+    Inputs: row – target row index; col – target column index.
+    Outputs: the Room located at the given coordinates, or null if not found.
+    Description: Searches the floor’s room map for a room at the specified position. */
     public Room getRoomAt(int row, int col) {
         for (Room room : roomMap.values()) {
-            if (room.getRow() == row && room.getCol() == col) {
-                return room;
-            }
+            if (room.getRow() == row && room.getCol() == col) { return room; } // Match found
         }
-        return null;
+        return null; // No room found at given coordinates
     }
+
     
 
 }
