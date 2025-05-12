@@ -39,14 +39,20 @@ public class GoldTicket extends Ticket {
      * Returns the door that was eliminated.
      */
     public int eliminateOneWrongDoor() {
+        List<Integer> candidates = new ArrayList<>();
         for (int door : remainingDoors) {
             if (door != winningDoor && door != playerChoice) {
-                remainingDoors.remove((Integer) door);
-                return door;
+                candidates.add(door);
             }
         }
-        throw new IllegalStateException("No door can be eliminated.");
+        if (candidates.isEmpty()) {
+            throw new IllegalStateException("No door can be eliminated.");
+        }
+        int eliminated = candidates.get(new Random().nextInt(candidates.size()));
+        remainingDoors.remove((Integer) eliminated);
+        return eliminated;
     }
+
 
     /**
      * Once only 2 doors remain, this method finalizes the game with the final choice.

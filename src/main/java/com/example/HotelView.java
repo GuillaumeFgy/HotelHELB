@@ -24,8 +24,11 @@ public class HotelView implements HotelObserver {
     private Stage stage;
     private Scene scene;
 
-    private final int windowHeigth = 800;
-    private final int windowWidth = 800;
+    private static final int WINDOW_WIDTH = 800;
+    private static final int WINDOW_HEIGHT = 800;
+
+    private static final int POPUP_WIDTH = (int)(WINDOW_WIDTH * 0.375);
+    private static final int POPUP_HEIGHT = (int)(WINDOW_HEIGHT * 0.25);
 
     private final Map<String, Button> roomButtonsMap;
     private ComboBox<String> floorSelector;
@@ -36,8 +39,9 @@ public class HotelView implements HotelObserver {
 
 
 
-    private final int roomsSize = 80;
-    private final int roomSpacing = 20;
+    private final int roomsSize = (int)(WINDOW_WIDTH * 0.1); // 10% width
+    private final int roomSpacing = (int)(WINDOW_WIDTH * 0.025); // 2.5% width
+
     private final String economicStyle = "-fx-background-color:rgb(255, 174, 68);";
     private final String businessStyle = "-fx-background-color:rgb(139, 224, 253);";
     private final String luxuryStyle = "-fx-background-color:rgb(201, 101, 255);";
@@ -59,14 +63,16 @@ public class HotelView implements HotelObserver {
     public void initView(Hotel hotel, Map<String, AssignmentStrategy> strategies) {
         prepareRoomButtonsMap(hotel); // ajout ici
     
+        double topPadding = WINDOW_HEIGHT * 0.2;
+
         HBox mainBox = new HBox();
         VBox leftPanel = new VBox(roomSpacing);
-        leftPanel.setPadding(new Insets(160, 20, 20, 20));
+        leftPanel.setPadding(new Insets(topPadding, 0.025 * WINDOW_WIDTH, 0.025 * WINDOW_HEIGHT, 0.025 * WINDOW_WIDTH));
         leftPanel.getChildren().add(displayColorCodes());
         leftPanel.getChildren().add(createFloorSelector(hotel));
     
         VBox rightPanel = new VBox(roomSpacing);
-        rightPanel.setPadding(new Insets(160, 0, 0, 0));
+        rightPanel.setPadding(new Insets(topPadding, 0, 0, 0));
         strategySelector = new ComboBox<>();
         getStrategySelector().getItems().addAll(strategies.keySet());
         getStrategySelector().setValue("Random Assignment");
@@ -79,20 +85,20 @@ public class HotelView implements HotelObserver {
         reservationList = new VBox(roomSpacing);
         ScrollPane scrollPane = new ScrollPane(reservationList);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(500); // à ajuster selon l’espace disponible
-        scrollPane.setPrefWidth(300);
+        scrollPane.setPrefHeight(WINDOW_HEIGHT * 0.6);
+        scrollPane.setPrefWidth(WINDOW_WIDTH * 0.375);
+
 
         rightPanel.getChildren().addAll(verifyCodeButton, strategySelector, sortSelector, scrollPane);
 
     
         mainBox.getChildren().addAll(leftPanel, rightPanel);
-        scene = new Scene(mainBox, windowWidth, windowHeigth);
+        scene = new Scene(mainBox, WINDOW_WIDTH, WINDOW_HEIGHT);
     
         stage.setScene(scene);
         stage.show();
         updateFloorView(hotel, 0);
     }
-    
 
     public void prepareRoomButtonsMap(Hotel hotel) {
         roomButtonsMap.clear();
@@ -134,13 +140,15 @@ public class HotelView implements HotelObserver {
             leftPanel.getChildren().add(rowBox);
         }
     }
-    
-    
-    
+
+    private void setSquareSize(Region node, double size) {
+        node.setPrefWidth(size);
+        node.setPrefHeight(size);
+    }
 
     private HBox displayColorCodes() {
         HBox legendBox = new HBox(roomSpacing);
-        legendBox.setPadding(new Insets(20));
+        legendBox.setPadding(new Insets(WINDOW_HEIGHT * 0.025));
     
         legendBox.getChildren().addAll(
             createLabel("Luxury", luxuryStyle),
@@ -166,8 +174,7 @@ public class HotelView implements HotelObserver {
     
     private Region createColorSample(String style) {
         Region sample = new Region();
-        sample.setPrefWidth(20);
-        sample.setPrefHeight(20);
+        setSquareSize(sample, roomsSize * 0.25);
         sample.setStyle(style + " -fx-border-color: black;");
         return sample;
     }
@@ -175,25 +182,22 @@ public class HotelView implements HotelObserver {
 
     private Button createStyledRoomButton(Room room) {
         Button button = new Button(room.getName());
-    
-        // Taille carrée, plus grande
-        button.setPrefWidth(roomsSize);
-        button.setPrefHeight(roomsSize);
-    
-        // Style par défaut (bordures arrondies, padding)
-        String style = "-fx-font-weight: bold; -fx-border-color: black; -fx-border-width: 1px; ";
-        style += getRoomColorStyle(room.getType());
-        button.setStyle(style);
+        setSquareSize(button, roomsSize);
+        button.setStyle(buildRoomButtonStyle(room.getType()));
         return button;
     }
 
     private Region createSpacer() {
         Region spacer = new Region();
-        spacer.setPrefWidth(roomsSize);
-        spacer.setPrefHeight(roomsSize);
+        setSquareSize(spacer, roomsSize);
         spacer.setStyle("-fx-background-color: transparent;");
         return spacer;
     }
+
+    private String buildRoomButtonStyle(char roomType) {
+        return "-fx-font-weight: bold; -fx-border-color: black; -fx-border-width: 1px; " + getRoomColorStyle(roomType);
+    }
+
     
     public Button getButton(String roomName)
     {
@@ -209,7 +213,7 @@ public class HotelView implements HotelObserver {
     public void freeRoom(String roomName, char type)
     {
         Button roomButton = roomButtonsMap.get(roomName);
-        roomButton.setStyle(getRoomColorStyle(type));
+        roomButton.setStyle(buildRoomButtonStyle(type));
     }
 
     private ComboBox<String> createFloorSelector(Hotel hotel) {
@@ -233,8 +237,8 @@ public class HotelView implements HotelObserver {
         Label roomLabel = new Label(roomName);
         roomLabel.setStyle(colorStyle + " -fx-padding: 5 10; -fx-font-weight: bold;");
     
-        HBox box = new HBox(10);
-        box.setPadding(new Insets(10));
+        HBox box = new HBox(roomSpacing * 0.5);
+        box.setPadding(new Insets(roomSpacing * 0.5));
         box.getChildren().addAll(nameLabel, roomLabel, refreshButton);
         box.setUserData(roomName);
         return box;
@@ -282,16 +286,15 @@ public class HotelView implements HotelObserver {
         resultLabel = new Label();
         verifyButton = new Button("Verify");
 
-        VBox layout = new VBox(10, infoLabel, codeInputField, verifyButton, resultLabel);
+        VBox layout = new VBox(roomSpacing * 0.5, infoLabel, codeInputField, verifyButton, resultLabel);
         layout.setPadding(new Insets(20));
         layout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(layout, 300, 200);
+        Scene scene = new Scene(layout, POPUP_WIDTH, POPUP_HEIGHT);
         verificationStage.setScene(scene);
         verificationStage.show();
     }
 
-    
     public ComboBox<String> getFloorSelector() { return floorSelector; }
     public VBox getReservationList() { return reservationList; }
     public ComboBox<String> getStrategySelector() { return strategySelector; }
@@ -301,7 +304,5 @@ public class HotelView implements HotelObserver {
     public TextField getCodeInputField() { return codeInputField; }
     public void showVerificationResult(String text) { resultLabel.setText(text); }
     public void closeVerificationPopup() { verificationStage.close(); }
-
-    
-    
+   
 }

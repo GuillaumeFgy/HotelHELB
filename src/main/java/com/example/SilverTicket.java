@@ -10,7 +10,8 @@ public class SilverTicket extends Ticket {
     private final String scrambledWord;
 
     private static final List<String> WORDS = Arrays.asList(
-        "helb", "hotel", "vacation", "client", "java", "ticket", "luxe", "checkin", "view", "room"
+        "helb", "hotel", "vacation", "client", "java", "ticket", "luxury", "plaine", "view", "room", "bronze",
+        "silver", "journey", "game", "open", "closed", "operator", "floor", "reservation", "logic", "constraint"
     );
 
     public SilverTicket(String code) {

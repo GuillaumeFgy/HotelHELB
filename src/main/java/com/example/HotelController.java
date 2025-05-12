@@ -10,6 +10,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -24,6 +25,11 @@ public class HotelController {
     private List<Reservation> reservations;
     private List<AssignmentRequest> assignments = new ArrayList<AssignmentRequest>();
     private final Map<String, AssignmentStrategy> strategies = new LinkedHashMap<>();
+
+    private static final String SORT_BY_NAME = "Sort by : Name";
+    private static final String SORT_BY_ROOM = "Sort by : Room";
+    private static final int DISCOUNT_CODE_LENGTH = 10;
+    private static final int POLL_INTERVAL_SECONDS = 2;
 
     public HotelController(HotelView view)
     {
@@ -54,7 +60,7 @@ public class HotelController {
         
             view.getVerifyButton().setOnAction(ev -> {
                 String code = view.getCodeInputField().getText().trim();
-                if (code.length() != 10) {
+                if (code.length() != DISCOUNT_CODE_LENGTH) {
                     view.showVerificationResult("❌ Invalid code length.");
                     return;
                 }
@@ -80,88 +86,56 @@ public class HotelController {
     }
 
     private void refreshButtonAction() {
-        VBox reservationList = view.getReservationList();
-    
-        for (javafx.scene.Node node : reservationList.getChildren()) {
-            if (node instanceof HBox) {
-                HBox hbox = (HBox) node;
-    
-                Object userData = hbox.getUserData();
-                if (!(userData instanceof String)) continue;
-    
-                String roomName = (String) userData;
-    
-                for (AssignmentRequest request : assignments) {
-                    if (request.room.getName().equals(roomName)) {
-                        final AssignmentRequest matchingRequest = request;
-    
-                        javafx.scene.Node last = hbox.getChildren().get(hbox.getChildren().size() - 1);
-                        if (last instanceof Button) {
-                            Button refreshButton = (Button) last;
-                            refreshButton.setOnAction(e -> reassignReservation(matchingRequest));
-                        }
-                        break;
-                    }
-                }
+        forEachReservationEntry((roomName, hbox) -> {
+            AssignmentRequest request = findRequestByRoomName(roomName);
+            Node last = hbox.getChildren().get(hbox.getChildren().size() - 1);
+            if (last instanceof Button) {
+                ((Button) last).setOnAction(e -> reassignReservation(request));
             }
-        }
+        });
     }
 
+
     private void addClickHandlersToReservations() {
-        VBox reservationList = view.getReservationList();
-    
-        for (javafx.scene.Node node : reservationList.getChildren()) {
-            if (node instanceof HBox) {
-                HBox hbox = (HBox) node;
-    
-                Object userData = hbox.getUserData();
-                if (userData instanceof String) {
-                    String roomName = (String) userData;
-                    for (AssignmentRequest request : assignments) {
-                        if (request.room.getName().equals(roomName)) {
-                            hbox.setOnMouseClicked(e -> ReservationView.show(request, hotel, view, this, false));
-                            break;
-                        }
-                    }
-                }
+        forEachReservationEntry((roomName, hbox) -> {
+            AssignmentRequest request = findRequestByRoomName(roomName);
+            if (request != null) {
+                hbox.setOnMouseClicked(e -> ReservationView.show(request, hotel, view, this, false));
             }
-        }
+        });
     }
-    
-    
 
     private void sortSelectorAction() {
         view.getSortSelector().setOnAction(event -> {
             String selected = view.getSortSelector().getValue();
     
             switch (selected) {
-                case "Sort by : Name":
+                case SORT_BY_NAME:
                     assignments.sort((a1, a2) -> a1.reservation.getLastName().compareToIgnoreCase(a2.reservation.getLastName()));
                     break;
-                    case "Sort by : Room":
-                        assignments.sort((a1, a2) -> {
-                            String r1 = a1.room.getName();
-                            String r2 = a2.room.getName();
-                    
-                            // Exemple : A12L → étage = A, numéro = 12
-                            char floor1 = r1.charAt(0);
-                            char floor2 = r2.charAt(0);
-                    
-                            int floorIndex1 = floor1 - 'A';
-                            int floorIndex2 = floor2 - 'A';
-                    
-                            // Extraire le numéro (en ignorant la première lettre et le dernier caractère)
-                            int num1 = extractRoomNumber(r1);
-                            int num2 = extractRoomNumber(r2);
-                    
-                            if (floorIndex1 != floorIndex2) {
-                                return Integer.compare(floorIndex1, floorIndex2);
-                            } else {
-                                return Integer.compare(num1, num2);
-                            }
-                        });
-                        break;
+                case SORT_BY_ROOM:
+                    assignments.sort((a1, a2) -> {
+                        String r1 = a1.room.getName();
+                        String r2 = a2.room.getName();
                 
+                        // Exemple : A12L → étage = A, numéro = 12
+                        char floor1 = r1.charAt(0);
+                        char floor2 = r2.charAt(0);
+                
+                        int floorIndex1 = floor1 - 'A';
+                        int floorIndex2 = floor2 - 'A';
+                
+                        // Extraire le numéro (en ignorant la première lettre et le dernier caractère)
+                        int num1 = extractRoomNumber(r1);
+                        int num2 = extractRoomNumber(r2);
+                
+                        if (floorIndex1 != floorIndex2) {
+                            return Integer.compare(floorIndex1, floorIndex2);
+                        } else {
+                            return Integer.compare(num1, num2);
+                        }
+                    });
+                    break;
                 default:
                     break;
             }
@@ -201,14 +175,7 @@ public class HotelController {
 
     public void reassignReservation(AssignmentRequest request) 
     {
-        int index = -1;
-        for (int i = 0; i < assignments.size(); i++) {
-            if (assignments.get(i).room.getName().equals(request.room.getName())) {
-                index = i;
-                break;
-            }
-        }
-
+        int index = findRequestIndexByRoomName(request.room.getName());
         if (index != -1) {
             hotel.freeRoom(request.room.getName());
             assignments.remove(index);
@@ -219,6 +186,16 @@ public class HotelController {
             }
         }
     }
+
+    private int findRequestIndexByRoomName(String roomName) {
+        for (int i = 0; i < assignments.size(); i++) {
+            if (assignments.get(i).room.getName().equals(roomName)) {
+                return i;
+            }
+        }
+        return -1;
+    }   
+
 
 
     public void updateReservationList()
@@ -232,9 +209,19 @@ public class HotelController {
         }
     }
 
+    private AssignmentRequest findRequestByRoomName(String roomName) {
+        for (AssignmentRequest request : assignments) {
+            if (request.room.getName().equals(roomName)) {
+                return request;
+            }
+        }
+        return null;
+    }
+
+
     private void startSimulation()
     {
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(2), new EventHandler<ActionEvent>(){
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(POLL_INTERVAL_SECONDS), new EventHandler<ActionEvent>(){
             @Override
             public void handle(ActionEvent event)
             {
@@ -286,5 +273,25 @@ public class HotelController {
             }
         }
     }
-    
+
+    private static interface ReservationEntryHandler {
+        void handle(String roomName, HBox hbox);
+    }
+
+    private void forEachReservationEntry(ReservationEntryHandler handler) {
+    VBox reservationList = view.getReservationList();
+
+    for (javafx.scene.Node node : reservationList.getChildren()) {
+        if (node instanceof HBox) {
+            HBox hbox = (HBox) node;
+            Object userData = hbox.getUserData();
+            if (userData instanceof String) {
+                handler.handle((String) userData, hbox);
+            }
+        }
+    }
 }
+
+}
+
+

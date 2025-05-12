@@ -1,8 +1,8 @@
-com/example/SequentialAssignment$1.class
 com/example/Ticket.class
+com/example/AssignmentStrategy$1.class
 com/example/SilverTicket.class
-com/example/StayPurposeAssignment$1.class
 com/example/ReservationView.class
+com/example/HotelController$ReservationEntryHandler.class
 com/example/AssignmentStrategy.class
 com/example/HotelObserver.class
 com/example/HotelView.class

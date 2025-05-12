@@ -5,6 +5,35 @@ import java.util.Random;
 public interface AssignmentStrategy {
     String getStrategyDescription();
     AssignmentRequest createAssignmentRequest(List<Room> availableRooms, Reservation reservation);
+
+    static final int[][] ADJACENT_OFFSETS = {
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+    };
+
+    static char determineTargetType(Reservation reservation) {
+        switch (reservation.getStayPurpose()) {
+            case BUSINESS:
+                return 'B';
+            case TOURISM:
+            case OTHER:
+            default:
+                if (!reservation.isSmoker() && reservation.getNumChildren() == 0) {
+                    return 'L';
+                } else {
+                    return 'E';
+                }
+        }
+    }
+
+    static AssignmentRequest fallbackByType(List<Room> rooms, Reservation reservation, char type) {
+        for (Room room : rooms) {
+            if (room.getType() == type) {
+                return new AssignmentRequest(reservation, room);
+            }
+        }
+        return new AssignmentRequest(reservation, rooms.get(0));
+    }
+
 }
 
 
@@ -19,9 +48,9 @@ class RandomAssignment implements AssignmentStrategy {
 
     @Override
     public AssignmentRequest createAssignmentRequest(List<Room> availableRooms, Reservation reservation) { 
-        AssignmentRequest request = new AssignmentRequest(reservation,availableRooms.get(random.nextInt(availableRooms.size())));
-        return request;
+        return new AssignmentRequest(reservation,availableRooms.get(random.nextInt(availableRooms.size())));
     }
+
 }
 
 class QuietZoneAssignment implements AssignmentStrategy {
@@ -66,7 +95,7 @@ class QuietZoneAssignment implements AssignmentStrategy {
         // Règle 2 : familles avec enfants et adultes seuls ne doivent pas être voisins
         boolean currentHasChildren = reservation.getNumChildren() > 0;
 
-        for (int[] offset : new int[][] { {1,0}, {-1,0}, {0,1}, {0,-1} }) {
+        for (int[] offset : AssignmentStrategy.ADJACENT_OFFSETS) {
             int neighborRow = row + offset[0];
             int neighborCol = col + offset[1];
 
@@ -79,7 +108,6 @@ class QuietZoneAssignment implements AssignmentStrategy {
                 }
             }
         }
-
         return true;
     }
 }
@@ -91,33 +119,10 @@ class StayPurposeAssignment implements AssignmentStrategy {
         return "Stay Purpose";
     }
 
-    @Override
+   @Override
     public AssignmentRequest createAssignmentRequest(List<Room> availableRooms, Reservation reservation) {
-        char targetType;
-
-        switch (reservation.getStayPurpose()) {
-            case BUSINESS:
-                targetType = 'B';
-                break;
-            case TOURISM:
-            case OTHER:
-            default:
-                if (!reservation.isSmoker() && reservation.getNumChildren() == 0) {
-                    targetType = 'L';
-                } else {
-                    targetType = 'E';
-                }
-                break;
-        }
-
-        for (Room room : availableRooms) {
-            if (room.getType() == targetType) {
-                return new AssignmentRequest(reservation, room);
-            }
-        }
-
-        // fallback si aucune chambre du type cible n'est dispo
-        return new AssignmentRequest(reservation, availableRooms.get(0));
+        char targetType = AssignmentStrategy.determineTargetType(reservation);
+        return AssignmentStrategy.fallbackByType(availableRooms, reservation, targetType);
     }
 }
 
@@ -134,51 +139,27 @@ class SequentialAssignment implements AssignmentStrategy {
         return "Sequential Assignment";
     }
 
-    @Override
     public AssignmentRequest createAssignmentRequest(List<Room> availableRooms, Reservation reservation) {
-        char targetType = determineTargetType(reservation);
+    char targetType = AssignmentStrategy.determineTargetType(reservation);
 
-        // Étape 1 : trouver une chambre du bon type adjacente à une chambre déjà réservée
-        for (int floorNum = 1; floorNum <= hotel.getNumberOfFloors(); floorNum++) {
-            Floor floor = hotel.getFloor(floorNum);
-            for (Room room : floor.getRoomMap().values()) {
-                if (!room.isReserved() && room.getType() == targetType && isAdjacentToReserved(room, floor)) {
-                    return new AssignmentRequest(reservation, room);
-                }
-            }
-        }
-
-        // Étape 2 : fallback, n'importe quelle chambre du bon type
-        for (Room room : availableRooms) {
-            if (room.getType() == targetType) {
+    for (int floorNum = 1; floorNum <= hotel.getNumberOfFloors(); floorNum++) {
+        Floor floor = hotel.getFloor(floorNum);
+        for (Room room : floor.getRoomMap().values()) {
+            if (!room.isReserved() && room.getType() == targetType && isAdjacentToReserved(room, floor)) {
                 return new AssignmentRequest(reservation, room);
             }
         }
-
-        // Étape 3 : fallback absolu
-        return new AssignmentRequest(reservation, availableRooms.get(0));
     }
 
-    private char determineTargetType(Reservation reservation) {
-        switch (reservation.getStayPurpose()) {
-            case BUSINESS:
-                return 'B';
-            case TOURISM:
-            case OTHER:
-            default:
-                if (!reservation.isSmoker() && reservation.getNumChildren() == 0) {
-                    return 'L';
-                } else {
-                    return 'E';
-                }
-        }
-    }
+    return AssignmentStrategy.fallbackByType(availableRooms, reservation, targetType);
+}
+
 
     private boolean isAdjacentToReserved(Room room, Floor floor) {
         int row = room.getRow();
         int col = room.getCol();
 
-        for (int[] offset : new int[][] { {1,0}, {-1,0}, {0,1}, {0,-1} }) {
+        for (int[] offset : AssignmentStrategy.ADJACENT_OFFSETS) {
             Room neighbor = floor.getRoomAt(row + offset[0], col + offset[1]);
             if (neighbor != null && neighbor.isReserved()) {
                 return true;
